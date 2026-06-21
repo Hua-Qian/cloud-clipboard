@@ -416,9 +416,11 @@
 
         // ===== 编辑 =====
         function showEditModal() {
+            const id = activeItemId;
             closeActionModal();
-            const item = findItemById(activeItemId);
+            const item = findItemById(id);
             if (!item) return;
+            activeItemId = id;
             document.getElementById('editTextInput').value = item.text;
             document.getElementById('editCatInput').value = item.category;
             document.getElementById('editModal').classList.add('show');

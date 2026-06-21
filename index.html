@@ -199,6 +199,22 @@
         .header-btn:active { opacity: 0.7; }
         .header-btn.export { background: #e8f5e9; color: #2e7d32; }
         .header-btn.import { background: #e3f2fd; color: #1565c0; }
+
+        /* ---- 搜索框 ---- */
+        .search-area {
+            width: 100%; max-width: 600px;
+            margin-bottom: 16px;
+        }
+        .search-area input {
+            width: 100%; padding: 10px 16px;
+            border: 1.5px solid #ddd;
+            border-radius: 10px; font-size: 14px; outline: none;
+            background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23999' width='16' height='16'%3E%3Cpath d='M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z'/%3E%3C/svg%3E") no-repeat 12px center;
+            padding-left: 36px;
+            transition: border-color 0.2s;
+        }
+        .search-area input:focus { border-color: #4f8cf7; }
+        .search-area input::placeholder { color: #bbb; }
     </style>
 </head>
 <body>
@@ -208,6 +224,10 @@
         <h1>📋 云剪贴板</h1>
         <p class="subtitle">双击复制 · 长按更多操作</p>
         <div class="sync-status" id="syncStatus">🟢 已连接</div>
+    </div>
+
+    <div class="search-area">
+        <input id="searchInput" placeholder="搜索内容或分组…" />
     </div>
 
     <div id="list"></div>
@@ -313,6 +333,7 @@
 
         let items = [];
         let activeItemId = null;
+        let searchQuery = '';
 
         // ---- 实时监听 ----
         itemsRef.on('value', (snapshot) => {
@@ -346,16 +367,25 @@
             const listEl = document.getElementById('list');
             const emptyTip = document.getElementById('emptyTip');
 
-            if (items.length === 0) {
+            // 过滤：搜索内容或分组
+            const filtered = searchQuery
+                ? items.filter(item =>
+                    item.text.toLowerCase().includes(searchQuery) ||
+                    item.category.toLowerCase().includes(searchQuery)
+                )
+                : items;
+
+            if (filtered.length === 0) {
                 listEl.innerHTML = '';
                 emptyTip.style.display = 'block';
+                emptyTip.textContent = searchQuery ? '没有匹配的结果' : '还没有内容，在下方添加';
                 return;
             }
             emptyTip.style.display = 'none';
 
             const grouped = {};
             const catOrder = [];
-            items.forEach(item => {
+            filtered.forEach(item => {
                 const cat = item.category || '通用';
                 if (!grouped[cat]) { grouped[cat] = []; catOrder.push(cat); }
                 grouped[cat].push(item);
@@ -858,6 +888,12 @@
         // ---- 回车 ----
         document.getElementById('newInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') addItem(); });
         document.getElementById('catInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') addItem(); });
+
+        // ---- 搜索 ----
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            searchQuery = e.target.value.trim().toLowerCase();
+            render();
+        });
     </script>
 
 </body>

@@ -30,37 +30,6 @@
         }
         .sync-status.offline { color: #e74c3c; }
 
-        /* ---- 分类标签 ---- */
-        .category-bar {
-            width: 100%; max-width: 600px;
-            display: flex; gap: 8px;
-            overflow-x: auto; padding-bottom: 8px;
-            margin-bottom: 12px;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-        }
-        .category-bar::-webkit-scrollbar { display: none; }
-        .category-bar .chip {
-            flex-shrink: 0;
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: 500;
-            border: 1.5px solid #ddd;
-            background: #fff;
-            color: #666;
-            cursor: pointer;
-            transition: all 0.2s;
-            -webkit-touch-callout: none;
-            user-select: none;
-        }
-        .category-bar .chip:active { opacity: 0.7; }
-        .category-bar .chip.active {
-            background: #4f8cf7;
-            color: #fff;
-            border-color: #4f8cf7;
-        }
-
         /* ---- 分类标题 ---- */
         .group-header {
             width: 100%; max-width: 600px;
@@ -76,21 +45,15 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
             display: flex; align-items: center; justify-content: space-between;
             gap: 12px; cursor: pointer;
-            transition: box-shadow 0.2s, transform 0.15s, background 0.2s;
+            transition: box-shadow 0.2s, transform 0.15s, background 0.2s, opacity 0.15s;
             user-select: none; -webkit-touch-callout: none;
+            touch-action: manipulation;
         }
         .copy-box:active { transform: scale(0.98); background: #f0f4ff; }
         .copy-box .text {
             flex: 1; font-size: 16px; color: #222;
             word-break: break-all; line-height: 1.5;
         }
-        .copy-box .del-btn {
-            flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%;
-            border: none; background: transparent; color: #ccc;
-            font-size: 18px; cursor: pointer; display: flex;
-            align-items: center; justify-content: center;
-        }
-        .copy-box .del-btn:active { background: #fee8e8; color: #e74c3c; }
         .copy-box .badge {
             flex-shrink: 0; font-size: 13px; color: #fff;
             background: #4f8cf7; border-radius: 8px; padding: 6px 16px;
@@ -110,45 +73,114 @@
         }
         .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+        /* ---- 添加区域 ---- */
         .add-area {
-            margin-top: 8px; display: flex; gap: 8px;
+            margin-top: 8px;
             width: 100%; max-width: 600px;
             position: sticky; bottom: calc(env(safe-area-inset-bottom));
             padding-bottom: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
-        .add-area input {
+        .add-row {
+            display: flex; gap: 8px;
+        }
+        .add-row input {
             flex: 1; padding: 14px 16px; border: 1.5px solid #ddd;
             border-radius: 10px; font-size: 16px; outline: none;
             background: #fff; transition: border-color 0.2s;
         }
-        .add-area input:focus { border-color: #4f8cf7; }
-        .add-area button {
+        .add-row input:focus { border-color: #4f8cf7; }
+        .add-row button {
             padding: 14px 24px; border: none; border-radius: 10px;
             background: #4f8cf7; color: #fff; font-size: 16px;
             font-weight: 500; cursor: pointer; transition: background 0.2s;
             -webkit-touch-callout: none;
+            white-space: nowrap;
         }
-        .add-area button:active { background: #3a7be5; }
+        .add-row button:active { background: #3a7be5; }
+        .cat-input {
+            padding: 10px 14px; border: 1.5px solid #ddd;
+            border-radius: 10px; font-size: 14px; outline: none;
+            background: #fff; transition: border-color 0.2s;
+            width: 100%;
+        }
+        .cat-input:focus { border-color: #4f8cf7; }
+        .cat-input::placeholder { color: #bbb; }
+
         .empty-tip { color: #bbb; font-size: 14px; margin-top: 40px; }
+
+        /* ---- 删除确认弹窗 ---- */
+        .modal-overlay {
+            display: none;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4);
+            z-index: 200;
+            align-items: center; justify-content: center;
+            padding: 32px;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-box {
+            background: #fff; border-radius: 16px;
+            padding: 28px 24px 20px;
+            width: 100%; max-width: 300px;
+            text-align: center;
+        }
+        .modal-box p {
+            font-size: 16px; color: #333;
+            margin-bottom: 24px; line-height: 1.5;
+        }
+        .modal-box .modal-text-preview {
+            font-size: 14px; color: #666;
+            background: #f5f5f5; border-radius: 8px;
+            padding: 10px 14px; margin-bottom: 20px;
+            word-break: break-all; text-align: left;
+            max-height: 80px; overflow-y: auto;
+        }
+        .modal-btns {
+            display: flex; gap: 12px;
+        }
+        .modal-btns button {
+            flex: 1; padding: 12px 0; border: none; border-radius: 10px;
+            font-size: 15px; font-weight: 500; cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .modal-btns button:active { opacity: 0.7; }
+        .btn-cancel { background: #f0f0f0; color: #666; }
+        .btn-confirm { background: #e74c3c; color: #fff; }
     </style>
 </head>
 <body>
 
     <h1>📋 云剪贴板</h1>
-    <p class="subtitle">点击复制 · 分类管理 · 多设备同步</p>
+    <p class="subtitle">点击复制 · 长按删除 · 多设备同步</p>
     <div class="sync-status" id="syncStatus">🟢 已连接</div>
 
     <div id="list"></div>
     <p class="empty-tip" id="emptyTip">还没有内容，在下方添加</p>
 
-    <div class="category-bar" id="categoryBar"></div>
-
     <div class="add-area">
-        <input id="newInput" placeholder="输入要添加的文本…" />
-        <button onclick="addItem()">添加</button>
+        <div class="add-row">
+            <input id="newInput" placeholder="输入要添加的文本…" />
+            <button onclick="addItem()">添加</button>
+        </div>
+        <input class="cat-input" id="catInput" placeholder="分组（留空则归为"通用"）" />
     </div>
 
     <div class="toast" id="toast"></div>
+
+    <!-- 删除确认弹窗 -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal-box">
+            <p>确认删除？</p>
+            <div class="modal-text-preview" id="deletePreview"></div>
+            <div class="modal-btns">
+                <button class="btn-cancel" onclick="closeDeleteModal()">取消</button>
+                <button class="btn-confirm" onclick="confirmDelete()">删除</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // ============ Firebase 配置 ============
@@ -164,17 +196,8 @@
         };
         // ======================================
 
-        // ---- 分类定义 ----
-        const CATEGORIES = ['常用', '链接', '密码', '备忘', '其他'];
-        const CATEGORY_COLORS = {
-            '常用': '#4f8cf7',
-            '链接': '#34c759',
-            '密码': '#ff9500',
-            '备忘': '#af52de',
-            '其他': '#8e8e93'
-        };
-
-        let selectedCategory = '常用';
+        // ---- 工具：颜色生成 ----
+        const COLORS = ['#4f8cf7','#34c759','#ff9500','#af52de','#ff3b30','#00c7be','#ff6482','#5856d6'];
 
         // ---- 初始化 Firebase ----
         firebase.initializeApp(firebaseConfig);
@@ -182,6 +205,7 @@
         const itemsRef = db.ref('items');
 
         let items = [];
+        let pendingDeleteId = null;
 
         // ---- 实时监听云端数据变化 ----
         itemsRef.on('value', (snapshot) => {
@@ -189,14 +213,13 @@
             if (data) {
                 items = Object.entries(data).map(([id, val]) => {
                     if (typeof val === 'string') {
-                        return { id, text: val, category: '其他' };
+                        return { id, text: val, category: '通用' };
                     }
-                    return { id, text: val.text || '', category: val.category || '其他' };
+                    return { id, text: val.text || '', category: val.category || '通用' };
                 });
             } else {
                 items = [];
             }
-            renderCategories();
             render();
             updateSyncStatus(true);
         }, (error) => {
@@ -209,20 +232,11 @@
             el.className = 'sync-status' + (online ? '' : ' offline');
         }
 
-        // ---- 渲染分类标签 ----
-        function renderCategories() {
-            const bar = document.getElementById('categoryBar');
-            bar.innerHTML = CATEGORIES.map(cat => `
-                <span class="chip ${cat === selectedCategory ? 'active' : ''}"
-                      onclick="selectCategory('${cat}')">${cat}</span>
-            `).join('');
-        }
-
-        function selectCategory(cat) {
-            selectedCategory = cat;
-            renderCategories();
-            // 滚动到选中的分类
-            document.getElementById('newInput').focus();
+        // ---- 获取分类颜色 ----
+        function getCatColor(cat) {
+            let hash = 0;
+            for (let i = 0; i < cat.length; i++) hash = ((hash << 5) - hash) + cat.charCodeAt(i);
+            return COLORS[Math.abs(hash) % COLORS.length];
         }
 
         // ---- 渲染 ----
@@ -239,27 +253,26 @@
 
             // 按分类分组
             const grouped = {};
-            CATEGORIES.forEach(c => grouped[c] = []);
+            const catOrder = [];
             items.forEach(item => {
-                const cat = item.category || '其他';
-                if (grouped[cat]) grouped[cat].push(item);
-                else grouped['其他'].push(item);
+                const cat = item.category || '通用';
+                if (!grouped[cat]) {
+                    grouped[cat] = [];
+                    catOrder.push(cat);
+                }
+                grouped[cat].push(item);
             });
 
-            // 过滤出有内容的分组
-            const activeGroups = CATEGORIES.filter(c => grouped[c].length > 0);
-
             let html = '';
-            activeGroups.forEach(cat => {
-                const color = CATEGORY_COLORS[cat] || '#8e8e93';
+            catOrder.forEach(cat => {
+                const color = getCatColor(cat);
                 html += `<div class="group-header">
-                    <span style="color:${color}">●</span> ${cat}
+                    <span style="color:${color}">●</span> ${cat} <span style="color:#ccc;font-weight:400;font-size:12px">${grouped[cat].length}</span>
                 </div>`;
-                grouped[cat].forEach((item, i) => {
+                grouped[cat].forEach(item => {
                     html += `
                         <div class="copy-box" data-id="${item.id}">
                             <span class="text">${escapeHtml(item.text)}</span>
-                            <button class="del-btn" onclick="event.stopPropagation();deleteItem('${item.id}')">×</button>
                             <span class="badge" onclick="event.stopPropagation();copyItem('${item.id}')">复制</span>
                         </div>
                     `;
@@ -268,10 +281,46 @@
 
             listEl.innerHTML = html;
 
-            // 点击卡片复制
+            // 点击卡片复制 + 长按删除
             listEl.querySelectorAll('.copy-box').forEach((box) => {
-                box.addEventListener('click', () => {
-                    copyItem(box.dataset.id);
+                let longPressTimer = null;
+                let isLongPress = false;
+
+                const startPress = (e) => {
+                    isLongPress = false;
+                    longPressTimer = setTimeout(() => {
+                        isLongPress = true;
+                        // 触觉反馈（手机震动）
+                        if (navigator.vibrate) navigator.vibrate(20);
+                        showDeleteModal(box.dataset.id);
+                    }, 600);
+                };
+                const endPress = () => {
+                    if (longPressTimer) {
+                        clearTimeout(longPressTimer);
+                        longPressTimer = null;
+                    }
+                    if (!isLongPress) {
+                        copyItem(box.dataset.id);
+                    }
+                };
+
+                box.addEventListener('touchstart', startPress, { passive: true });
+                box.addEventListener('touchend', endPress);
+                box.addEventListener('touchmove', () => {
+                    if (longPressTimer) {
+                        clearTimeout(longPressTimer);
+                        longPressTimer = null;
+                    }
+                });
+
+                box.addEventListener('mousedown', startPress);
+                box.addEventListener('mouseup', endPress);
+                box.addEventListener('mouseleave', () => {
+                    if (longPressTimer) {
+                        clearTimeout(longPressTimer);
+                        longPressTimer = null;
+                    }
                 });
             });
         }
@@ -320,20 +369,47 @@
         // ---- 添加 ----
         function addItem() {
             const input = document.getElementById('newInput');
+            const catInput = document.getElementById('catInput');
             const val = input.value.trim();
+            const cat = catInput.value.trim() || '通用';
             if (!val) return;
 
-            const obj = { text: val, category: selectedCategory };
+            const obj = { text: val, category: cat };
             itemsRef.push(obj, (error) => {
                 if (error) showToast('同步失败，请重试');
-                else input.value = '';
+                else {
+                    input.value = '';
+                    catInput.value = '';
+                }
             });
         }
 
-        // ---- 删除 ----
-        function deleteItem(id) {
-            itemsRef.child(id).remove();
+        // ---- 删除（长按弹窗） ----
+        function showDeleteModal(id) {
+            pendingDeleteId = id;
+            const item = findItemById(id);
+            if (!item) return;
+            document.getElementById('deletePreview').textContent = item.text;
+            document.getElementById('deleteModal').classList.add('show');
         }
+
+        function closeDeleteModal() {
+            pendingDeleteId = null;
+            document.getElementById('deleteModal').classList.remove('show');
+        }
+
+        function confirmDelete() {
+            if (pendingDeleteId) {
+                itemsRef.child(pendingDeleteId).remove();
+                showToast('已删除');
+            }
+            closeDeleteModal();
+        }
+
+        // 点击遮罩层关闭弹窗
+        document.getElementById('deleteModal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) closeDeleteModal();
+        });
 
         // ---- Toast ----
         let toastTimer = null;
@@ -347,6 +423,9 @@
 
         // ---- 回车添加 ----
         document.getElementById('newInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') addItem();
+        });
+        document.getElementById('catInput').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') addItem();
         });
     </script>

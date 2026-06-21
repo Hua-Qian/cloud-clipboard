@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>我的云剪贴板</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, "Microsoft YaHei", sans-serif;
+            background: #f5f5f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 40px 16px;
+            padding-bottom: calc(40px + env(safe-area-inset-bottom));
+            -webkit-tap-highlight-color: transparent;
+        }
+        h1 {
+            font-size: 22px;
+            color: #333;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        .subtitle {
+            font-size: 13px;
+            color: #999;
+            margin-bottom: 24px;
+        }
+
+        .sync-bar {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .sync-bar button {
+            flex: 1;
+            padding: 10px 0;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s, opacity 0.2s;
+            -webkit-touch-callout: none;
+        }
+        .sync-bar button:active {
+            opacity: 0.7;
+        }
+        .btn-share {
+            background: #e8f0fe;
+            color: #4f8cf7;
+        }
+        .btn-clear {
+            background: #fee8e8;
+            color: #e74c3c;
+        }
+
+        .copy-box {
+            width: 100%;
+            max-width: 600px;
+            background: #fff;
+            border-radius: 14px;
+            padding: 18px 20px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            cursor: pointer;
+            transition: box-shadow 0.2s, transform 0.15s, background 0.2s;
+            user-select: none;
+            -webkit-touch-callout: none;
+            position: relative;
+        }
+        .copy-box:active {
+            transform: scale(0.98);
+            background: #f0f4ff;
+        }
+        .copy-box .text {
+            flex: 1;
+            font-size: 16px;
+            color: #222;
+            word-break: break-all;
+            line-height: 1.5;
+        }
+        .copy-box .del-btn {
+            flex-shrink: 0;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: transparent;
+            color: #ccc;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .copy-box .del-btn:active {
+            background: #fee8e8;
+            color: #e74c3c;
+        }
+        .copy-box .badge {
+            flex-shrink: 0;
+            font-size: 13px;
+            color: #fff;
+            background: #4f8cf7;
+            border-radius: 8px;
+            padding: 6px 16px;
+            transition: background 0.2s;
+            font-weight: 500;
+            min-width: 56px;
+            text-align: center;
+        }
+        .copy-box.copied {
+            background: #f0fff4;
+        }
+        .copy-box.copied .badge {
+            background: #34c759;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: calc(40px + env(safe-area-inset-bottom));
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: rgba(0,0,0,0.78);
+            color: #fff;
+            font-size: 14px;
+            padding: 12px 24px;
+            border-radius: 10px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s, transform 0.3s;
+            white-space: nowrap;
+            max-width: 90vw;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            z-index: 100;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .add-area {
+            margin-top: 8px;
+            display: flex;
+            gap: 8px;
+            width: 100%;
+            max-width: 600px;
+            position: sticky;
+            bottom: calc(env(safe-area-inset-bottom));
+            padding-bottom: 8px;
+        }
+        .add-area input {
+            flex: 1;
+            padding: 14px 16px;
+            border: 1.5px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            outline: none;
+            background: #fff;
+            transition: border-color 0.2s;
+        }
+        .add-area input:focus {
+            border-color: #4f8cf7;
+        }
+        .add-area button {
+            padding: 14px 24px;
+            border: none;
+            border-radius: 10px;
+            background: #4f8cf7;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            -webkit-touch-callout: none;
+        }
+        .add-area button:active {
+            background: #3a7be5;
+        }
+
+        .empty-tip {
+            color: #bbb;
+            font-size: 14px;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>📋 云剪贴板</h1>
+    <p class="subtitle">点击卡片复制 · 云端同步</p>
+
+    <div class="sync-bar">
+        <button class="btn-share" onclick="generateShareLink()">🔗 生成分享链接</button>
+        <button class="btn-clear" onclick="clearAll()">🗑 清空全部</button>
+    </div>
+
+    <div id="list"></div>
+    <p class="empty-tip" id="emptyTip">还没有内容，在下方添加</p>
+
+    <div class="add-area">
+        <input id="newInput" placeholder="输入要添加的文本…" />
+        <button onclick="addItem()">添加</button>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ---- 数据管理 ----
+        const STORAGE_KEY = 'cloud_clip_items';
+        let items = [];
+
+        function loadItems() {
+            // 1. 优先从 URL hash 读取（分享链接带过来的数据）
+            const hashData = decodeHash();
+            if (hashData && hashData.length > 0) {
+                items = hashData;
+                saveToLocal();
+                // 清除 hash，避免下次重复导入
+                history.replaceState(null, '', window.location.pathname);
+                return;
+            }
+
+            // 2. 从 localStorage 读取
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try { items = JSON.parse(saved); } catch { items = []; }
+            }
+        }
+
+        function saveToLocal() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+        }
+
+        // ---- URL 编解码 ----
+        function encodeHash(data) {
+            // 压缩 + base64 编码
+            const json = JSON.stringify(data);
+            const compressed = btoa(encodeURIComponent(json));
+            return compressed;
+        }
+
+        function decodeHash() {
+            const hash = window.location.hash.replace(/^#/, '');
+            if (!hash) return null;
+            try {
+                const json = decodeURIComponent(atob(hash));
+                const data = JSON.parse(json);
+                return Array.isArray(data) ? data : null;
+            } catch {
+                return null;
+            }
+        }
+
+        // ---- 渲染 ----
+        function render() {
+            const listEl = document.getElementById('list');
+            const emptyTip = document.getElementById('emptyTip');
+
+            if (items.length === 0) {
+                listEl.innerHTML = '';
+                emptyTip.style.display = 'block';
+                return;
+            }
+            emptyTip.style.display = 'none';
+
+            listEl.innerHTML = items.map((text, i) => `
+                <div class="copy-box" data-index="${i}">
+                    <span class="text">${escapeHtml(text)}</span>
+                    <button class="del-btn" onclick="event.stopPropagation();deleteItem(${i})">×</button>
+                    <span class="badge" onclick="event.stopPropagation();copy(${i})">复制</span>
+                </div>
+            `).join('');
+
+            // 点击整个卡片也触发复制
+            listEl.querySelectorAll('.copy-box').forEach((box) => {
+                box.addEventListener('click', () => {
+                    const idx = parseInt(box.dataset.index);
+                    copy(idx);
+                });
+            });
+        }
+
+        function escapeHtml(str) {
+            const d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
+        }
+
+        // ---- 复制 ----
+        async function copy(index) {
+            const text = items[index];
+            try {
+                await navigator.clipboard.writeText(text);
+            } catch {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                ta.style.top = '0';
+                ta.style.left = '0';
+                document.body.appendChild(ta);
+                ta.focus();
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+            }
+
+            // 视觉反馈
+            const boxes = document.querySelectorAll('.copy-box');
+            const box = boxes[index];
+            if (box) {
+                box.classList.add('copied');
+                const badge = box.querySelector('.badge');
+                if (badge) badge.textContent = '已复制 ✓';
+                setTimeout(() => {
+                    box.classList.remove('copied');
+                    if (badge) badge.textContent = '复制';
+                }, 1200);
+            }
+
+            showToast(text.length > 28 ? text.slice(0, 28) + '…' : text);
+        }
+
+        // ---- 添加 ----
+        function addItem() {
+            const input = document.getElementById('newInput');
+            const val = input.value.trim();
+            if (!val) return;
+            items.push(val);
+            input.value = '';
+            saveToLocal();
+            render();
+            const boxes = document.querySelectorAll('.copy-box');
+            if (boxes.length > 0) {
+                boxes[boxes.length - 1].scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        // ---- 删除 ----
+        function deleteItem(index) {
+            items.splice(index, 1);
+            saveToLocal();
+            render();
+            showToast('已删除');
+        }
+
+        // ---- 清空 ----
+        function clearAll() {
+            if (items.length === 0) return;
+            if (!confirm('确定要清空全部内容吗？')) return;
+            items = [];
+            saveToLocal();
+            render();
+            showToast('已清空');
+        }
+
+        // ---- 生成分享链接 ----
+        function generateShareLink() {
+            if (items.length === 0) {
+                showToast('还没有内容可分享');
+                return;
+            }
+            const encoded = encodeHash(items);
+            const url = window.location.origin + window.location.pathname + '#' + encoded;
+            
+            // 复制链接到剪贴板
+            try {
+                navigator.clipboard.writeText(url);
+            } catch {
+                // fallback
+                const ta = document.createElement('textarea');
+                ta.value = url;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+            }
+            showToast('分享链接已复制到剪贴板');
+        }
+
+        // ---- Toast ----
+        let toastTimer = null;
+        function showToast(msg) {
+            const toastEl = document.getElementById('toast');
+            if (toastTimer) clearTimeout(toastTimer);
+            toastEl.textContent = msg;
+            toastEl.classList.add('show');
+            toastTimer = setTimeout(() => {
+                toastEl.classList.remove('show');
+            }, 1800);
+        }
+
+        // ---- 回车添加 ----
+        document.getElementById('newInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') addItem();
+        });
+
+        // ---- 初始化 ----
+        loadItems();
+        render();
+    </script>
+
+</body>
+</html>

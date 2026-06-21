@@ -467,7 +467,7 @@
             });
 
             let html = '';
-            catOrder.sort((a, b) => a.localeCompare(b, 'zh-CN', { numeric: true })).forEach(cat => {
+            catOrder.sort((a, b) => a.localeCompare(b)).forEach(cat => {
                 const color = getCatColor(cat);
                 html += `<div class="group-header"><span style="color:${color}">●</span> ${cat} <span style="color:#ccc;font-weight:400;font-size:12px">${grouped[cat].length}</span></div>`;
                 grouped[cat].forEach(item => {

@@ -455,6 +455,9 @@
             }
             emptyTip.style.display = 'none';
 
+            // 按内容排序
+            filtered.sort((a, b) => a.text.localeCompare(b.text));
+
             const grouped = {};
             const catOrder = [];
             filtered.forEach(item => {
@@ -464,7 +467,7 @@
             });
 
             let html = '';
-            catOrder.forEach(cat => {
+            catOrder.sort((a, b) => a.localeCompare(b)).forEach(cat => {
                 const color = getCatColor(cat);
                 html += `<div class="group-header"><span style="color:${color}">●</span> ${cat} <span style="color:#ccc;font-weight:400;font-size:12px">${grouped[cat].length}</span></div>`;
                 grouped[cat].forEach(item => {

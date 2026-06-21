@@ -521,14 +521,34 @@
             const file = e.target.files[0];
             if (!file) return;
 
+            // 用 ArrayBuffer 读取，手动尝试 UTF-8 和 GBK
             const reader = new FileReader();
             reader.onload = function(event) {
-                const content = event.target.result;
+                const arrayBuffer = event.target.result;
+
+                // 1. 尝试 UTF-8 解码（默认会去掉 BOM）
+                const utf8Result = new TextDecoder('utf-8').decode(arrayBuffer);
+                const utf8FirstLine = utf8Result.split('\n')[0].trim().toLowerCase();
+
+                let content = utf8Result;
+
+                // 2. 如果第一行没有 "text" 列名，说明可能是 GBK 编码，尝试 GBK
+                if (!utf8FirstLine.includes('text')) {
+                    try {
+                        const gbkResult = new TextDecoder('gbk').decode(arrayBuffer);
+                        const gbkFirstLine = gbkResult.split('\n')[0].trim().toLowerCase();
+                        if (gbkFirstLine.includes('text')) {
+                            content = gbkResult;
+                        }
+                    } catch (e) {
+                        // TextDecoder('gbk') 不支持时回退到 UTF-8
+                    }
+                }
+
                 parseCSVContent(content);
-                // 重置 input，允许重复选择同一个文件
                 document.getElementById('csvFileInput').value = '';
             };
-            reader.readAsText(file, 'UTF-8');
+            reader.readAsArrayBuffer(file);
         });
 
         function parseCSVContent(content) {

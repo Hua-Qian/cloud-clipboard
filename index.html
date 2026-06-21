@@ -532,7 +532,35 @@
         });
 
         function parseCSVContent(content) {
-            const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
+            // 按行拆分，但正确处理引号内的换行
+            const lines = [];
+            let currentLine = '';
+            let inQuotes = false;
+            for (let i = 0; i < content.length; i++) {
+                const ch = content[i];
+                if (ch === '"') {
+                    inQuotes = !inQuotes;
+                    currentLine += ch;
+                } else if (ch === '\n' || (ch === '\r' && content[i+1] === '\n')) {
+                    if (!inQuotes) {
+                        if (currentLine.trim()) lines.push(currentLine.trim());
+                        currentLine = '';
+                        if (ch === '\r') i++; // 跳过 \r
+                    } else {
+                        currentLine += ch;
+                    }
+                } else if (ch === '\r') {
+                    if (!inQuotes) {
+                        if (currentLine.trim()) lines.push(currentLine.trim());
+                        currentLine = '';
+                    } else {
+                        currentLine += ch;
+                    }
+                } else {
+                    currentLine += ch;
+                }
+            }
+            if (currentLine.trim()) lines.push(currentLine.trim());
             if (lines.length < 2) {
                 showToast('CSV 文件为空或格式不正确');
                 return;
@@ -540,8 +568,9 @@
 
             // 解析表头，找到 text 和 category 的列索引
             const header = parseCSVLine(lines[0]);
-            const textIdx = header.findIndex(h => h.trim().toLowerCase() === 'text');
-            const catIdx = header.findIndex(h => h.trim().toLowerCase() === 'category');
+            // 去掉 BOM 字符（\uFEFF）
+            const textIdx = header.findIndex(h => h.replace(/^\uFEFF/, '').trim().toLowerCase() === 'text');
+            const catIdx = header.findIndex(h => h.replace(/^\uFEFF/, '').trim().toLowerCase() === 'category');
 
             if (textIdx === -1) {
                 showToast('CSV 文件缺少 "text" 列');

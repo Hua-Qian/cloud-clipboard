@@ -651,28 +651,27 @@
 
         function confirmImport(append) {
             if (parsedImportData.length === 0) return;
+            const data = parsedImportData.slice(); // 先保存副本
             closeImportModal();
 
             if (append) {
-                // 追加：逐条写入
                 let completed = 0;
-                parsedImportData.forEach((item, i) => {
+                data.forEach((item) => {
                     itemsRef.push({ text: item.text, category: item.category }, () => {
                         completed++;
-                        if (completed === parsedImportData.length) {
-                            showToast(`已导入 ${parsedImportData.length} 条数据`);
+                        if (completed === data.length) {
+                            showToast(`已追加导入 ${data.length} 条数据`);
                         }
                     });
                 });
             } else {
-                // 覆盖：先清空，再写入
                 itemsRef.remove(() => {
                     let completed = 0;
-                    parsedImportData.forEach((item, i) => {
+                    data.forEach((item) => {
                         itemsRef.push({ text: item.text, category: item.category }, () => {
                             completed++;
-                            if (completed === parsedImportData.length) {
-                                showToast(`已覆盖导入 ${parsedImportData.length} 条数据`);
+                            if (completed === data.length) {
+                                showToast(`已覆盖导入 ${data.length} 条数据`);
                             }
                         });
                     });

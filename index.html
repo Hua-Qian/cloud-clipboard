@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>我的云剪贴板</title>
+    <title>云剪贴板</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js">
+    </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -26,17 +31,28 @@
         .subtitle {
             font-size: 13px;
             color: #999;
-            margin-bottom: 24px;
+            margin-bottom: 6px;
+        }
+        .sync-status {
+            font-size: 12px;
+            color: #34c759;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .sync-status.offline {
+            color: #e74c3c;
         }
 
-        .sync-bar {
+        .top-bar {
             width: 100%;
             max-width: 600px;
             display: flex;
             gap: 8px;
             margin-bottom: 16px;
         }
-        .sync-bar button {
+        .top-bar button {
             flex: 1;
             padding: 10px 0;
             border: none;
@@ -47,17 +63,8 @@
             transition: background 0.2s, opacity 0.2s;
             -webkit-touch-callout: none;
         }
-        .sync-bar button:active {
-            opacity: 0.7;
-        }
-        .btn-share {
-            background: #e8f0fe;
-            color: #4f8cf7;
-        }
-        .btn-clear {
-            background: #fee8e8;
-            color: #e74c3c;
-        }
+        .top-bar button:active { opacity: 0.7; }
+        .btn-clear { background: #fee8e8; color: #e74c3c; }
 
         .copy-box {
             width: 100%;
@@ -75,7 +82,6 @@
             transition: box-shadow 0.2s, transform 0.15s, background 0.2s;
             user-select: none;
             -webkit-touch-callout: none;
-            position: relative;
         }
         .copy-box:active {
             transform: scale(0.98);
@@ -119,12 +125,8 @@
             min-width: 56px;
             text-align: center;
         }
-        .copy-box.copied {
-            background: #f0fff4;
-        }
-        .copy-box.copied .badge {
-            background: #34c759;
-        }
+        .copy-box.copied { background: #f0fff4; }
+        .copy-box.copied .badge { background: #34c759; }
 
         .toast {
             position: fixed;
@@ -145,10 +147,7 @@
             text-overflow: ellipsis;
             z-index: 100;
         }
-        .toast.show {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
         .add-area {
             margin-top: 8px;
@@ -170,9 +169,7 @@
             background: #fff;
             transition: border-color 0.2s;
         }
-        .add-area input:focus {
-            border-color: #4f8cf7;
-        }
+        .add-area input:focus { border-color: #4f8cf7; }
         .add-area button {
             padding: 14px 24px;
             border: none;
@@ -185,24 +182,18 @@
             transition: background 0.2s;
             -webkit-touch-callout: none;
         }
-        .add-area button:active {
-            background: #3a7be5;
-        }
+        .add-area button:active { background: #3a7be5; }
 
-        .empty-tip {
-            color: #bbb;
-            font-size: 14px;
-            margin-top: 40px;
-        }
+        .empty-tip { color: #bbb; font-size: 14px; margin-top: 40px; }
     </style>
 </head>
 <body>
 
     <h1>📋 云剪贴板</h1>
-    <p class="subtitle">点击卡片复制 · 云端同步</p>
+    <p class="subtitle">点击复制 · 多设备实时同步</p>
+    <div class="sync-status" id="syncStatus">🟢 已连接</div>
 
-    <div class="sync-bar">
-        <button class="btn-share" onclick="generateShareLink()">🔗 生成分享链接</button>
+    <div class="top-bar">
         <button class="btn-clear" onclick="clearAll()">🗑 清空全部</button>
     </div>
 
@@ -217,49 +208,52 @@
     <div class="toast" id="toast"></div>
 
     <script>
-        // ---- 数据管理 ----
-        const STORAGE_KEY = 'cloud_clip_items';
+        // ============ 配置区 ============
+        const firebaseConfig = {
+            apiKey: "AIzaSyAP9lpzll2dwrb8lP-QDG6HtzIUmqht11g",
+            authDomain: "copy-3c2be.firebaseapp.com",
+            databaseURL: "https://copy-3c2be-default-rtdb.firebaseio.com",
+            projectId: "copy-3c2be",
+            storageBucket: "copy-3c2be.firebasestorage.app",
+            messagingSenderId: "650077116381",
+            appId: "1:650077116381:web:1b6cf9cfe41235483f8834",
+            measurementId: "G-J574GLH0WC"
+        };
+        // ================================
+
+        // ---- 初始化 Firebase ----
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const itemsRef = db.ref('items');
+
         let items = [];
+        let isSynced = false;
 
-        function loadItems() {
-            // 1. 优先从 URL hash 读取（分享链接带过来的数据）
-            const hashData = decodeHash();
-            if (hashData && hashData.length > 0) {
-                items = hashData;
-                saveToLocal();
-                // 清除 hash，避免下次重复导入
-                history.replaceState(null, '', window.location.pathname);
-                return;
+        // ---- 实时监听云端数据变化 ----
+        itemsRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                // 转成数组 { id, text }
+                items = Object.entries(data).map(([id, text]) => ({ id, text }));
+            } else {
+                items = [];
             }
+            render();
+            updateSyncStatus(true);
+            isSynced = true;
+        }, (error) => {
+            updateSyncStatus(false);
+            console.error('Firebase sync error:', error);
+        });
 
-            // 2. 从 localStorage 读取
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                try { items = JSON.parse(saved); } catch { items = []; }
-            }
-        }
-
-        function saveToLocal() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-        }
-
-        // ---- URL 编解码 ----
-        function encodeHash(data) {
-            // 压缩 + base64 编码
-            const json = JSON.stringify(data);
-            const compressed = btoa(encodeURIComponent(json));
-            return compressed;
-        }
-
-        function decodeHash() {
-            const hash = window.location.hash.replace(/^#/, '');
-            if (!hash) return null;
-            try {
-                const json = decodeURIComponent(atob(hash));
-                const data = JSON.parse(json);
-                return Array.isArray(data) ? data : null;
-            } catch {
-                return null;
+        function updateSyncStatus(online) {
+            const el = document.getElementById('syncStatus');
+            if (online) {
+                el.textContent = '🟢 已连接 · 实时同步中';
+                el.className = 'sync-status';
+            } else {
+                el.textContent = '🔴 连接断开，请检查网络';
+                el.className = 'sync-status offline';
             }
         }
 
@@ -275,15 +269,14 @@
             }
             emptyTip.style.display = 'none';
 
-            listEl.innerHTML = items.map((text, i) => `
+            listEl.innerHTML = items.map((item, i) => `
                 <div class="copy-box" data-index="${i}">
-                    <span class="text">${escapeHtml(text)}</span>
-                    <button class="del-btn" onclick="event.stopPropagation();deleteItem(${i})">×</button>
+                    <span class="text">${escapeHtml(item.text)}</span>
+                    <button class="del-btn" onclick="event.stopPropagation();deleteItem('${item.id}')">×</button>
                     <span class="badge" onclick="event.stopPropagation();copy(${i})">复制</span>
                 </div>
             `).join('');
 
-            // 点击整个卡片也触发复制
             listEl.querySelectorAll('.copy-box').forEach((box) => {
                 box.addEventListener('click', () => {
                     const idx = parseInt(box.dataset.index);
@@ -300,24 +293,18 @@
 
         // ---- 复制 ----
         async function copy(index) {
-            const text = items[index];
-            try {
-                await navigator.clipboard.writeText(text);
-            } catch {
+            const text = items[index].text;
+            try { await navigator.clipboard.writeText(text); }
+            catch {
                 const ta = document.createElement('textarea');
                 ta.value = text;
-                ta.style.position = 'fixed';
-                ta.style.opacity = '0';
-                ta.style.top = '0';
-                ta.style.left = '0';
+                ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
                 document.body.appendChild(ta);
-                ta.focus();
-                ta.select();
+                ta.focus(); ta.select();
                 document.execCommand('copy');
                 document.body.removeChild(ta);
             }
 
-            // 视觉反馈
             const boxes = document.querySelectorAll('.copy-box');
             const box = boxes[index];
             if (box) {
@@ -333,63 +320,34 @@
             showToast(text.length > 28 ? text.slice(0, 28) + '…' : text);
         }
 
-        // ---- 添加 ----
+        // ---- 添加（写入云端） ----
         function addItem() {
             const input = document.getElementById('newInput');
             const val = input.value.trim();
             if (!val) return;
-            items.push(val);
-            input.value = '';
-            saveToLocal();
-            render();
-            const boxes = document.querySelectorAll('.copy-box');
-            if (boxes.length > 0) {
-                boxes[boxes.length - 1].scrollIntoView({ behavior: 'smooth' });
-            }
+
+            // push 到 Firebase，自动生成唯一 ID
+            itemsRef.push(val, (error) => {
+                if (error) {
+                    showToast('同步失败，请重试');
+                } else {
+                    input.value = '';
+                    // 渲染由 on('value') 自动触发
+                }
+            });
         }
 
-        // ---- 删除 ----
-        function deleteItem(index) {
-            items.splice(index, 1);
-            saveToLocal();
-            render();
-            showToast('已删除');
+        // ---- 删除（删除云端） ----
+        function deleteItem(id) {
+            itemsRef.child(id).remove();
         }
 
         // ---- 清空 ----
         function clearAll() {
             if (items.length === 0) return;
-            if (!confirm('确定要清空全部内容吗？')) return;
-            items = [];
-            saveToLocal();
-            render();
+            if (!confirm('确定要清空全部内容吗？此操作会同步到所有设备。')) return;
+            itemsRef.remove();
             showToast('已清空');
-        }
-
-        // ---- 生成分享链接 ----
-        function generateShareLink() {
-            if (items.length === 0) {
-                showToast('还没有内容可分享');
-                return;
-            }
-            const encoded = encodeHash(items);
-            const url = window.location.origin + window.location.pathname + '#' + encoded;
-            
-            // 复制链接到剪贴板
-            try {
-                navigator.clipboard.writeText(url);
-            } catch {
-                // fallback
-                const ta = document.createElement('textarea');
-                ta.value = url;
-                ta.style.position = 'fixed';
-                ta.style.opacity = '0';
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
-            }
-            showToast('分享链接已复制到剪贴板');
         }
 
         // ---- Toast ----
@@ -399,19 +357,13 @@
             if (toastTimer) clearTimeout(toastTimer);
             toastEl.textContent = msg;
             toastEl.classList.add('show');
-            toastTimer = setTimeout(() => {
-                toastEl.classList.remove('show');
-            }, 1800);
+            toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800);
         }
 
         // ---- 回车添加 ----
         document.getElementById('newInput').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') addItem();
         });
-
-        // ---- 初始化 ----
-        loadItems();
-        render();
     </script>
 
 </body>

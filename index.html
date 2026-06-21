@@ -934,9 +934,11 @@
 
         // ===== 删除 =====
         function showDeleteModal() {
+            const id = activeItemId;
             closeActionModal();
-            const item = findItemById(activeItemId);
+            const item = findItemById(id);
             if (!item) return;
+            activeItemId = id;
             document.getElementById('deletePreview').textContent = item.text;
             document.getElementById('deleteModal').classList.add('show');
         }
